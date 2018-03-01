@@ -11,12 +11,13 @@ from ana_STL import STL_computation
 
 F=STL_computation(2,1)
 
-p1=F.add_predicate(1,">",0.3)
+p1=F.add_predicate(1,">",0.2)
 p2=F.add_predicate(1,"<",0.6)
 
-p3=F.add_predicate(1,">",0.3)
-p4=F.add_predicate(1,"<",0.59)
+p3=F.add_predicate(1,">",0.25)
+p4=F.add_predicate(1,"<",0.67)
 
 phi_1=F.Conj([p1,p2])
 phi_2=F.Conj([p3,p4])
-F.directed_distance(phi_1,phi_2)
+r=F.directed_distance(phi_1,phi_2)
+print(r)

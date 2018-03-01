@@ -43,7 +43,7 @@ class STL_computation:
         self.n_predicates=0
     
     def construct(self):
-        self.rho=self.model.addVar(lb=-10,ub=10)
+        self.rho=self.model.addVar(lb=0,ub=10)
         self.flag=1 # 1 for relaxation
                     # -1 for tightening
                     # 0 for holding constant
@@ -69,18 +69,17 @@ class STL_computation:
     
     def predicate_constraints(self,predicate,flag):
         f=predicate
-        y=predicate.y
+        y_signal=predicate.y
         sign=predicate.sign
         c=predicate.c
-        flag=self.flag
         if sign=="<":
             for t in range(self.T):
-                self.model.addConstr(self.y[y,t]<=c+bigM-bigM*self.z[f,t]+flag*self.rho)
-                self.model.addConstr(self.y[y,t]>=c-bigM*self.z[f,t]+flag*self.rho)
+                self.model.addConstr(self.y[y_signal,t]<=c+bigM-bigM*self.z[f,t]+flag*self.rho)
+                self.model.addConstr(self.y[y_signal,t]>=c-bigM*self.z[f,t]+flag*self.rho)
         elif sign==">":
             for t in range(self.T):
-                self.model.addConstr(self.y[y,t]>=c-bigM+bigM*self.z[f,t]-flag*self.rho)
-                self.model.addConstr(self.y[y,t]<=c+bigM*self.z[f,t]-flag*self.rho)
+                self.model.addConstr(self.y[y_signal,t]>=c-bigM+bigM*self.z[f,t]-flag*self.rho)
+                self.model.addConstr(self.y[y_signal,t]<=c+bigM*self.z[f,t]-flag*self.rho)
         else:
             raise("Error: invalid form of predicate. Use only '<' or '>' ")
     
@@ -213,10 +212,14 @@ class STL_computation:
             print(p)
             if p.type=="predicate":
                 print(p)
-                self.predicate_constraints(p,0)
-        #self.model.setObjective(self.rho)
+                self.predicate_constraints(p,1)
+        self.model.setObjective(-self.rho)
         self.model.addConstr(self.z[f1,0]==1)
         self.model.addConstr(self.z[f2,0]==0)
         self.model.optimize()
         for y,val in self.y.items():
             print(y,val.X)
+        if self.model.status==2:
+            return self.rho.X
+        else:
+            return 0
