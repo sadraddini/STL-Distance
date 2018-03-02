@@ -12,7 +12,7 @@ Created on Tue Feb 27 11:17:12 2018
     Ideally I want to do parsing.
 """
 
-from copy import deepcopy
+from copy import copy,deepcopy
 
 from gurobipy import *
 import random
@@ -28,7 +28,7 @@ class STL:
     
     def __repr__(self):
         return self.name
-
+    
 class STL_computation:
     def __init__(self,n,T=0):
         self.n=n   
@@ -39,17 +39,24 @@ class STL_computation:
         self.subformulas=[]
         self.Y=range(1,n+1)
         self.construct()
-        self.predicates=[] # list of predicates with flags
         self.n_predicates=0
     
+    def __deepcopy__(self,memo):
+        print("*"*80,"\n We are doing a deepcopy",str(memo))
+        new=STL_computation(self.n,self.T)        
+        new.model=self.model.copy()
+        new.subformulas=self.subformulas
+        return new
+
+    
     def construct(self):
-        self.rho=self.model.addVar(lb=0,ub=10)
+        self.rho=self.model.addVar(lb=0,ub=10,name="r")
         self.flag=1 # 1 for relaxation
                     # -1 for tightening
                     # 0 for holding constant
         for t in range(0,self.T):
             for y in self.Y:
-                self.y[y,t]=self.model.addVar(lb=0,ub=1)  
+                self.y[y,t]=self.model.addVar(lb=0,ub=1,name=str(y)+","+str(t))  
         self.model.update()
 
     def add_predicate(self,y,sign,c):
@@ -60,7 +67,7 @@ class STL_computation:
         
         self.subformulas.append(f)
         for t in range(self.T):
-            self.z[f,t]=self.model.addVar(vtype=GRB.BINARY)
+            self.z[f,t]=self.model.addVar(vtype=GRB.BINARY,name=str(f)+","+str(t))
         self.model.update()
         f.y=y
         f.sign=sign
@@ -95,8 +102,10 @@ class STL_computation:
             if f_in not in self.subformulas:
                 raise("Error:",f_in," one of the formulas not defined before")
         f_out=STL()
+        self.subformulas.append(f_out)
+        f_out.name=("phi_%d"%(len(self.subformulas)-self.n))
         for t in range(self.T):
-            self.z[f_out,t]=self.model.addVar(lb=0,ub=1)
+            self.z[f_out,t]=self.model.addVar(lb=0,ub=1,name=str(f_out)+","+str(t))
         self.model.update()
         for t in range(self.T):
             s=LinExpr()
@@ -104,8 +113,6 @@ class STL_computation:
                 self.model.addConstr(self.z[f_out,t]<=self.z[f_in,t])
                 s.add(self.z[f_in,t])
             self.model.addConstr(self.z[f_out,t]>=s-len(list_of_formulas)+1)
-        self.subformulas.append(f_out)
-        f_out.name=("phi_%d"%(len(self.subformulas)-self.n))
         f_out.composition="Conjunction of "+str(list_of_formulas)
         for formula in list_of_formulas:
             f_out.children.extend(formula.children)
@@ -115,9 +122,11 @@ class STL_computation:
         for f_in in list_of_formulas:
             if f_in not in self.subformulas:
                 raise("Error:",f_in," one of the formulas not defined before")
-        f_out=STL()
+        f_out=STL()        
+        self.subformulas.append(f_out)
+        f_out.name=("phi_%d"%(len(self.subformulas)-self.n))
         for t in range(self.T):
-            self.z[f_out,t]=self.model.addVar(lb=0,ub=1)
+            self.z[f_out,t]=self.model.addVar(lb=0,ub=1,name=str(f_out)+","+str(t))
         self.model.update()
         for t in range(self.T):
             s=LinExpr()
@@ -125,9 +134,7 @@ class STL_computation:
                 self.model.addConstr(self.z[f_out,t]>=self.z[f_in,t])
                 s.add(self.z[f_in,t])
             self.model.addConstr(self.z[f_out,t]<=s)
-        self.subformulas.append(f_out)
-        f_out.name=("phi_%d"%(len(self.subformulas)-self.n))
-        f_out.composition="Disjunction of "+list_of_formulas
+        f_out.composition="Disjunction of "+str(list_of_formulas)
         for formula in list_of_formulas:
             f_out.children.extend(formula.children)
         return f_out            
@@ -136,8 +143,10 @@ class STL_computation:
         if f not in self.subformulas:
             raise("Error:",f," one of the formulas not defined before")
         f_out=STL()
+        self.subformulas.append(f_out)
+        f_out.name=("phi_%d"%(len(self.subformulas)-self.n))
         for t in range(self.T):
-            self.z[f_out,t]=self.model.addVar(lb=0,ub=1)
+            self.z[f_out,t]=self.model.addVar(lb=0,ub=1,name=str(f_out)+","+str(t))
         self.model.update()
         for t in range(self.T-I[-1]):
             s=LinExpr()
@@ -145,8 +154,6 @@ class STL_computation:
                 self.model.addConstr(self.z[f_out,t]<=self.z[f,t+tau])
                 s.add(self.z[f,t+tau])
             self.model.addConstr(self.z[f_out,t]>=s-len(I)+1)
-        self.subformulas.append(f_out)
-        f_out.name=("phi_%d"%(len(self.subformulas)-self.n))
         f_out.composition="Always "+str(I)+" "+f.name
         f_out.children.extend(f.children)
         return f_out        
@@ -154,9 +161,11 @@ class STL_computation:
     def F(self,I,f):
         if f not in self.subformulas:
             raise("Error:",f," one of the formulas not defined before")
-        f_out=STL()
+        f_out=STL()        
+        self.subformulas.append(f_out)
+        f_out.name=("phi_%d"%(len(self.subformulas)-self.n))
         for t in range(self.T):
-            self.z[f_out,t]=self.model.addVar(lb=0,ub=1)
+            self.z[f_out,t]=self.model.addVar(lb=0,ub=1,name=str(f_out)+","+str(t))
         self.model.update()
         for t in range(self.T-I[-1]):
             s=LinExpr()
@@ -164,14 +173,11 @@ class STL_computation:
                 self.model.addConstr(self.z[f_out,t]>=self.z[f,t+tau])
                 s.add(self.z[f,t])
             self.model.addConstr(self.z[f_out,t]<=s)
-        self.subformulas.append(f_out)
-        f_out.name=("phi_%d"%(len(self.subformulas)-self.n))
         f_out.composition="Eventually "+str(I)+" "+f.name
         f_out.children.extend(f.children)
         return f_out
     
     def best_signal(self,f):
-        m=self.model.copy()
         if f not in self.subformulas:
             raise("Error:",f," one of the formulas not defined before")
         for p in f.children:
@@ -223,3 +229,27 @@ class STL_computation:
             return self.rho.X
         else:
             return 0
+
+def directed_distance(s,f1,f2):
+    if len(set(f1.children)&set(f2.children))>0:
+        raise("Error: duplicated predicates:",set(f1.children)&set(f2.children))
+    for p in f1.children:
+        print(p)
+        if p.type=="predicate":
+            print(p)
+            s.predicate_constraints(p,0)   
+    for p in f2.children:
+        print(p)
+        if p.type=="predicate":
+            print(p)
+            s.predicate_constraints(p,1)
+    s.model.setObjective(-s.rho)
+    s.model.addConstr(s.z[f1,0]==1)
+    s.model.addConstr(s.z[f2,0]==0)
+    s.model.optimize()
+    if s.model.status==2:
+        for y,val in s.y.items():
+            print(y,val.X)
+        return s.rho.X
+    else:
+        return 0

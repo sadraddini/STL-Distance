@@ -15,6 +15,5 @@ p2=F.add_predicate(2,"<",0.6)
 
 phi_1=F.Conj([p1,p2])
 phi_3=F.G(range(2,11),F.Conj([p1,p2]))
-
 F.best_signal(phi_3)
 #F.worst_signal(phi_3)
