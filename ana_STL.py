@@ -17,7 +17,7 @@ from copy import copy,deepcopy
 from gurobipy import *
 import random
 
-bigM=10
+bigM=20
 
 class STL:
     def __init__(self,name="formula"):
@@ -171,7 +171,7 @@ class STL_computation:
             s=LinExpr()
             for tau in I:
                 self.model.addConstr(self.z[f_out,t]>=self.z[f,t+tau])
-                s.add(self.z[f,t])
+                s.add(self.z[f,t+tau])
             self.model.addConstr(self.z[f_out,t]<=s)
         f_out.composition="Eventually "+str(I)+" "+f.name
         f_out.children.extend(f.children)
